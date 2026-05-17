@@ -91,7 +91,7 @@
   <div class="game-box">
     <h1>한글 단어 맞추기</h1>
 
-    <div class="hint" id="hint">초성: </div>
+    <div class="hint" id="hint">단어 목록을 불러오는 중...</div>
 
     <input type="text" id="answer" placeholder="정답 입력" onkeyup="if(window.event.keyCode==13){checkAnswer()}">
 
@@ -106,15 +106,7 @@
 
 <script>
 
-const wordList = [
-  "사과", "바나나", "포도", "딸기", "수박", "오렌지", "복숭아", "강아지", "고양이", "코끼리",
-  "기린", "호랑이", "사자", "토끼", "다람쥐", "거북이", "컴퓨터", "휴대폰", "자동차", "비행기",
-  "자전거", "학교", "선생님", "학생", "공부", "우정", "사랑", "가족", "부모님", "바다",
-  "하늘", "구름", "태양", "달빛", "별자리", "나무", "꽃잎", "산책", "운동", "여행",
-  "도서관", "음악", "영화", "노래", "춤", "그림", "요리", "음식", "커피", "우유",
-  "겨울", "여름", "봄나물", "가을", "무지개", "시냇물", "단풍나무", "해바라기", "코스모스", "장미꽃"
-];
-
+let wordList = [];
 let words = [];
 let current = 0;
 let score = 0;
@@ -136,11 +128,38 @@ function getChoseong(word) {
   return result;
 }
 
+// 외부 단어 데이터 불러오기 (1000개 공통 단어)
+async function fetchWords() {
+  try {
+    const response = await fetch('https://raw.githubusercontent.com/SMenigat/thousand-most-common-words/master/words/ko.json');
+    const data = await response.json();
+    
+    // 유효한 단어만 필터링 (2글자 이상, 한글만 포함)
+    wordList = data.words
+      .map(item => item.targetWord)
+      .filter(word => word.length >= 2 && /^[가-힣]+$/.test(word));
+    
+    if (wordList.length > 0) {
+      initGame();
+    } else {
+      throw new Error("No valid words found");
+    }
+  } catch (error) {
+    console.error('Error fetching words:', error);
+    document.getElementById("hint").innerText = "단어를 불러오지 못했습니다. 기본 단어로 시작합니다.";
+    
+    // 폴백 단어 리스트
+    wordList = ["사과", "바나나", "학교", "컴퓨터", "우정", "하늘", "바다", "사랑", "가족", "노래"];
+    initGame();
+  }
+}
+
 // 게임 초기화 및 단어 셔플
 function initGame() {
   words = wordList
     .map(word => ({ word, hint: getChoseong(word) }))
     .sort(() => Math.random() - 0.5);
+    
   current = 0;
   score = 0;
   updateScore();
@@ -181,14 +200,13 @@ function checkAnswer() {
   updateScore();
   current++;
 
-  // 다음 문제로 넘어가기 (약간의 지연)
   setTimeout(() => {
     loadQuestion();
   }, 1200);
 }
 
-// 게임 시작
-initGame();
+// 실행
+fetchWords();
 
 </script>
 
