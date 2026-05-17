@@ -1,14 +1,172 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html lang="ko">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Hello World</title>
-  <link href='/style.css' rel='stylesheet'>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>한글 단어 맞추기 게임</title>
+
+  <style>
+    body{
+      font-family: Arial, sans-serif;
+      background:#f2f2f2;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      height:100vh;
+      margin:0;
+    }
+
+    .game-box{
+      background:white;
+      padding:30px;
+      border-radius:15px;
+      box-shadow:0 0 10px rgba(0,0,0,0.2);
+      width:350px;
+      text-align:center;
+    }
+
+    h1{
+      color:#333;
+    }
+
+    .hint{
+      font-size:22px;
+      margin:20px 0;
+      color:#444;
+    }
+
+    input{
+      width:80%;
+      padding:10px;
+      font-size:18px;
+      border:1px solid #ccc;
+      border-radius:8px;
+    }
+
+    button{
+      margin-top:15px;
+      padding:10px 20px;
+      font-size:16px;
+      border:none;
+      border-radius:8px;
+      background:#4CAF50;
+      color:white;
+      cursor:pointer;
+    }
+
+    button:hover{
+      background:#45a049;
+    }
+
+    .result{
+      margin-top:20px;
+      font-size:20px;
+      font-weight:bold;
+    }
+
+    .score{
+      margin-top:10px;
+      font-size:18px;
+      color:#222;
+    }
+  </style>
 </head>
+
 <body>
-  <h1>Hello, world!</h1>
-  <button onclick="console.log('hello');">Press me</button>
-  <script defer type="text/javascript" src="/main.js"></script>
+
+  <div class="game-box">
+    <h1>한글 단어 맞추기</h1>
+
+    <div class="hint" id="hint">초성: ㄱㅂ</div>
+
+    <input type="text" id="answer" placeholder="정답 입력">
+
+    <br>
+
+    <button onclick="checkAnswer()">정답 확인</button>
+
+    <div class="result" id="result"></div>
+
+    <div class="score" id="score">점수 : 0</div>
+  </div>
+
+<script>
+
+const words = [
+  { word:"김밥", hint:"ㄱㅂ" },
+  { word:"사과", hint:"ㅅㄱ" },
+  { word:"바나나", hint:"ㅂㄴㄴ" },
+  { word:"호랑이", hint:"ㅎㄹㅇ" },
+  { word:"컴퓨터", hint:"ㅋㅍㅌ" }
+];
+
+let current = 0;
+let score = 0;
+
+function loadQuestion(){
+  document.getElementById("hint").innerText =
+    "초성: " + words[current].hint;
+
+  document.getElementById("answer").value = "";
+  document.getElementById("result").innerText = "";
+}
+
+function checkAnswer(){
+
+  const input =
+    document.getElementById("answer").value.trim();
+
+  const correct = words[current].word;
+
+  if(input === correct){
+
+    score += 10;
+
+    document.getElementById("result").innerText =
+      "정답입니다!";
+
+    document.getElementById("result").style.color = "green";
+
+  }else{
+
+    document.getElementById("result").innerText =
+      "틀렸습니다! 정답 : " + correct;
+
+    document.getElementById("result").style.color = "red";
+  }
+
+  document.getElementById("score").innerText =
+    "점수 : " + score;
+
+  current++;
+
+  if(current >= words.length){
+
+    setTimeout(() => {
+
+      alert("게임 종료! 최종 점수 : " + score);
+
+      current = 0;
+      score = 0;
+
+      document.getElementById("score").innerText =
+        "점수 : 0";
+
+      loadQuestion();
+
+    }, 1000);
+
+  }else{
+
+    setTimeout(() => {
+      loadQuestion();
+    }, 1000);
+  }
+}
+
+loadQuestion();
+
+</script>
+
 </body>
 </html>
