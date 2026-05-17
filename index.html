@@ -1,214 +1,359 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>한글 단어 맞추기 게임</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>한글 자모 워들 (Jordle)</title>
+    <style>
+        :root {
+            --color-correct: #6aaa64;
+            --color-present: #c9b458;
+            --color-absent: #787c7e;
+            --color-border: #d3d6da;
+            --color-text: #1a1a1a;
+        }
 
-  <style>
-    body{
-      font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
-      background:#f2f2f2;
-      display:flex;
-      justify-content:center;
-      align-items:center;
-      height:100vh;
-      margin:0;
-    }
+        body {
+            font-family: 'Malgun Gothic', sans-serif;
+            background-color: #ffffff;
+            color: var(--color-text);
+            display: flex;
+            flex-direction: column;
+            align-items:center;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
 
-    .game-box{
-      background:white;
-      padding:30px;
-      border-radius:15px;
-      box-shadow:0 0 10px rgba(0,0,0,0.2);
-      width:350px;
-      text-align:center;
-    }
+        h1 { margin-bottom: 30px; }
 
-    h1{
-      color:#333;
-    }
+        #board {
+            display: grid;
+            grid-template-rows: repeat(5, 1fr);
+            gap: 5px;
+            margin-bottom: 20px;
+        }
 
-    .hint{
-      font-size:24px;
-      margin:20px 0;
-      color:#444;
-      font-weight: bold;
-      background: #eef;
-      padding: 10px;
-      border-radius: 8px;
-    }
+        .row {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 5px;
+        }
 
-    input{
-      width:80%;
-      padding:12px;
-      font-size:18px;
-      border:2px solid #ddd;
-      border-radius:8px;
-      outline: none;
-      transition: border-color 0.3s;
-    }
+        .tile {
+            width: 60px;
+            height: 60px;
+            border: 2px solid var(--color-border);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            user-select: none;
+            transition: background-color 0.3s, border-color 0.3s, color 0.3s;
+        }
 
-    input:focus {
-      border-color: #4CAF50;
-    }
+        .tile[data-state="correct"] {
+            background-color: var(--color-correct);
+            border-color: var(--color-correct);
+            color: white;
+        }
 
-    button{
-      margin-top:15px;
-      padding:10px 20px;
-      font-size:16px;
-      border:none;
-      border-radius:8px;
-      background:#4CAF50;
-      color:white;
-      cursor:pointer;
-      transition: background 0.3s;
-    }
+        .tile[data-state="present"] {
+            background-color: var(--color-present);
+            border-color: var(--color-present);
+            color: white;
+        }
 
-    button:hover{
-      background:#45a049;
-    }
+        .tile[data-state="absent"] {
+            background-color: var(--color-absent);
+            border-color: var(--color-absent);
+            color: white;
+        }
 
-    .result{
-      margin-top:20px;
-      font-size:20px;
-      font-weight:bold;
-      height: 24px;
-    }
+        #keyboard {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 5px;
+            max-width: 500px;
+            width: 100%;
+        }
 
-    .score{
-      margin-top:15px;
-      font-size:18px;
-      color:#222;
-      border-top: 1px solid #eee;
-      padding-top: 10px;
-    }
-  </style>
+        .key {
+            background-color: #d3d6da;
+            border: 0;
+            border-radius: 4px;
+            padding: 15px 5px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .key:hover { background-color: #bbb; }
+
+        .key.wide { grid-column: span 2; }
+
+        #message {
+            height: 30px;
+            margin: 20px;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+        
+        .loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.5rem;
+        }
+    </style>
 </head>
-
 <body>
 
-  <div class="game-box">
-    <h1>한글 단어 맞추기</h1>
+    <h1>한글 자모 워들</h1>
+    <div id="board"></div>
+    <div id="message"></div>
+    <div id="keyboard"></div>
 
-    <div class="hint" id="hint">단어 목록을 불러오는 중...</div>
+    <script>
+        const JAMO_MAP = {
+            'ㅔ': ['ㅓ', 'ㅣ'],
+            'ㅐ': ['ㅏ', 'ㅣ'],
+            'ㅖ': ['ㅕ', 'ㅣ'],
+            'ㅒ': ['ㅑ', 'ㅣ'],
+            'ㅘ': ['ㅗ', 'ㅏ'],
+            'ㅙ': ['ㅗ', 'ㅏ', 'ㅣ'],
+            'ㅚ': ['ㅗ', 'ㅣ'],
+            'ㅝ': ['ㅜ', 'ㅓ'],
+            'ㅞ': ['ㅜ', 'ㅓ', 'ㅣ'],
+            'ㅟ': ['ㅜ', 'ㅣ'],
+            'ㅢ': ['ㅡ', 'ㅣ'],
+            'ㄲ': ['ㄱ', 'ㄱ'],
+            'ㄸ': ['ㄷ', 'ㄷ'],
+            'ㅃ': ['ㅂ', 'ㅂ'],
+            'ㅆ': ['ㅅ', 'ㅅ'],
+            'ㅉ': ['ㅈ', 'ㅈ'],
+            'ㄳ': ['ㄱ', 'ㅅ'],
+            'ㄵ': ['ㄴ', 'ㅈ'],
+            'ㄶ': ['ㄴ', 'ㅎ'],
+            'ㄺ': ['ㄹ', 'ㄱ'],
+            'ㄻ': ['ㄹ', 'ㅁ'],
+            'ㄼ': ['ㄹ', 'ㅂ'],
+            'ㄽ': ['ㄹ', 'ㅅ'],
+            'ㄾ': ['ㄹ', 'ㅌ'],
+            'ㄿ': ['ㄹ', 'ㅍ'],
+            'ㅀ': ['ㄹ', 'ㅎ'],
+            'ㅄ': ['ㅂ', 'ㅅ']
+        };
 
-    <input type="text" id="answer" placeholder="정답 입력" onkeyup="if(window.event.keyCode==13){checkAnswer()}">
+        const CHOSEONG = ['ㄱ', 'ㄲ', 'ㄴ', 'ㄷ', 'ㄸ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅃ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'];
+        const JUNGSEONG = ['ㅏ', 'ㅐ', 'ㅑ', 'ㅒ', 'ㅓ', 'ㅔ', 'ㅕ', 'ㅖ', 'ㅗ', 'ㅘ', 'ㅙ', 'ㅚ', 'ㅛ', 'ㅜ', 'ㅝ', 'ㅞ', 'ㅟ', 'ㅠ', 'ㅡ', 'ㅢ', 'ㅣ'];
+        const JONGSEONG = ['', 'ㄱ', 'ㄲ', 'ㄳ', 'ㄴ', 'ㄵ', 'ㄶ', 'ㄷ', 'ㄹ', 'ㄺ', 'ㄻ', 'ㄼ', 'ㄽ', 'ㄾ', 'ㄿ', 'ㅀ', 'ㅁ', 'ㅂ', 'ㅄ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'];
 
-    <br>
+        function disassemble(str) {
+            let result = [];
+            for (let char of str) {
+                const code = char.charCodeAt(0) - 44032;
+                if (code < 0 || code > 11171) {
+                    result.push(char);
+                    continue;
+                }
+                const cho = Math.floor(code / 588);
+                const jung = Math.floor((code % 588) / 28);
+                const jong = code % 28;
 
-    <button onclick="checkAnswer()">정답 확인</button>
+                const parts = [CHOSEONG[cho], JUNGSEONG[jung], JONGSEONG[jong]].filter(p => p !== '');
+                
+                for (let p of parts) {
+                    if (JAMO_MAP[p]) {
+                        result.push(...JAMO_MAP[p]);
+                    } else {
+                        result.push(p);
+                    }
+                }
+            }
+            return result;
+        }
 
-    <div class="result" id="result"></div>
+        let targetWord = "";
+        let targetJamos = [];
+        let guesses = [];
+        let currentGuess = [];
+        let gameOver = false;
 
-    <div class="score" id="score">점수 : 0</div>
-  </div>
+        const boardElement = document.getElementById('board');
+        const keyboardElement = document.getElementById('keyboard');
+        const messageElement = document.getElementById('message');
 
-<script>
+        async function init() {
+            try {
+                messageElement.innerText = "단어 목록을 불러오는 중...";
+                // 1000 common words source (simplified fallback logic)
+                const response = await fetch('https://raw.githubusercontent.com/SMenigat/thousand-most-common-words/master/words/ko.json');
+                const data = await response.json();
+                
+                const nouns = data.words
+                    .map(w => w.targetWord)
+                    .filter(w => /^[가-힣]+$/.test(w))
+                    .filter(w => disassemble(w).length === 5);
 
-let wordList = [];
-let words = [];
-let current = 0;
-let score = 0;
+                if (nouns.length === 0) {
+                    // Fallback word
+                    targetWord = "나무";
+                } else {
+                    targetWord = nouns[Math.floor(Math.random() * nouns.length)];
+                }
 
-// 한글 초성 추출 함수
-function getChoseong(word) {
-  const choseongList = [
-    "ㄱ", "ㄲ", "ㄴ", "ㄷ", "ㄸ", "ㄹ", "ㅁ", "ㅂ", "ㅃ", "ㅅ", "ㅆ", "ㅇ", "ㅈ", "ㅉ", "ㅊ", "ㅋ", "ㅌ", "ㅍ", "ㅎ"
-  ];
-  let result = "";
-  for (let i = 0; i < word.length; i++) {
-    const code = word.charCodeAt(i) - 44032;
-    if (code >= 0 && code <= 11171) {
-      result += choseongList[Math.floor(code / 588)];
-    } else {
-      result += word.charAt(i);
-    }
-  }
-  return result;
-}
+                targetJamos = disassemble(targetWord);
+                console.log("Target:", targetWord, targetJamos);
 
-// 외부 단어 데이터 불러오기 (1000개 공통 단어)
-async function fetchWords() {
-  try {
-    const response = await fetch('https://raw.githubusercontent.com/SMenigat/thousand-most-common-words/master/words/ko.json');
-    const data = await response.json();
-    
-    // 유효한 단어만 필터링 (2글자 이상, 한글만 포함)
-    wordList = data.words
-      .map(item => item.targetWord)
-      .filter(word => word.length >= 2 && /^[가-힣]+$/.test(word));
-    
-    if (wordList.length > 0) {
-      initGame();
-    } else {
-      throw new Error("No valid words found");
-    }
-  } catch (error) {
-    console.error('Error fetching words:', error);
-    document.getElementById("hint").innerText = "단어를 불러오지 못했습니다. 기본 단어로 시작합니다.";
-    
-    // 폴백 단어 리스트
-    wordList = ["사과", "바나나", "학교", "컴퓨터", "우정", "하늘", "바다", "사랑", "가족", "노래"];
-    initGame();
-  }
-}
+                messageElement.innerText = "";
+                createBoard();
+                createKeyboard();
+                
+                window.addEventListener('keydown', handleKeyDown);
+            } catch (e) {
+                console.error(e);
+                messageElement.innerText = "단어를 불러오지 못했습니다.";
+            }
+        }
 
-// 게임 초기화 및 단어 셔플
-function initGame() {
-  words = wordList
-    .map(word => ({ word, hint: getChoseong(word) }))
-    .sort(() => Math.random() - 0.5);
-    
-  current = 0;
-  score = 0;
-  updateScore();
-  loadQuestion();
-}
+        function createBoard() {
+            for (let i = 0; i < 5; i++) {
+                const row = document.createElement('div');
+                row.className = 'row';
+                for (let j = 0; j < 5; j++) {
+                    const tile = document.createElement('div');
+                    tile.className = 'tile';
+                    tile.id = `tile-${i}-${j}`;
+                    row.appendChild(tile);
+                }
+                boardElement.appendChild(row);
+            }
+        }
 
-function loadQuestion() {
-  if (current < words.length) {
-    document.getElementById("hint").innerText = "초성: " + words[current].hint;
-    document.getElementById("answer").value = "";
-    document.getElementById("answer").focus();
-    document.getElementById("result").innerText = "";
-  } else {
-    alert("모든 문제를 풀었습니다! 최종 점수: " + score);
-    initGame();
-  }
-}
+        function createKeyboard() {
+            const keys = [
+                'ㄱ', 'ㄴ', 'ㄷ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅅ', 'ㅇ', 'ㅈ', 'ㅊ',
+                'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ', 'ㅏ', 'ㅑ', 'ㅓ', 'ㅕ', 'ㅗ', 'ㅛ',
+                'ㅜ', 'ㅠ', 'ㅡ', 'ㅣ', 'Enter', 'Back'
+            ];
 
-function updateScore() {
-  document.getElementById("score").innerText = "점수 : " + score;
-}
+            keys.forEach(k => {
+                const button = document.createElement('button');
+                button.innerText = k;
+                button.className = 'key';
+                if (k === 'Enter' || k === 'Back') button.classList.add('wide');
+                button.onclick = () => handleKey(k);
+                keyboardElement.appendChild(button);
+            });
+        }
 
-function checkAnswer() {
-  const input = document.getElementById("answer").value.trim();
-  if (!input) return;
+        function handleKeyDown(e) {
+            if (gameOver) return;
+            if (e.key === 'Enter') handleKey('Enter');
+            else if (e.key === 'Backspace') handleKey('Back');
+            else {
+                const key = e.key;
+                const hKey = convertToHangul(key);
+                if (hKey) handleKey(hKey);
+            }
+        }
 
-  const correct = words[current].word;
+        function convertToHangul(k) {
+            // Simplified qwerty to jamo mapping
+            const map = {
+                'q':'ㅂ', 'w':'ㅈ', 'e':'ㄷ', 'r':'ㄱ', 't':'ㅅ', 'y':'ㅛ', 'u':'ㅕ', 'i':'ㅑ', 'o':'ㅐ', 'p':'ㅔ',
+                'a':'ㅁ', 's':'ㄴ', 'd':'ㅇ', 'f':'ㄹ', 'g':'ㅎ', 'h':'ㅗ', 'j':'ㅓ', 'k':'ㅏ', 'l':'ㅣ',
+                'z':'ㅋ', 'x':'ㅌ', 'c':'ㅊ', 'v':'ㅍ', 'b':'ㅠ', 'n':'ㅜ', 'm':'ㅡ'
+            };
+            return map[k.toLowerCase()] || null;
+        }
 
-  if (input === correct) {
-    score += 10;
-    document.getElementById("result").innerText = "정답입니다! 🎉";
-    document.getElementById("result").style.color = "green";
-  } else {
-    document.getElementById("result").innerText = "틀렸습니다! 정답: " + correct;
-    document.getElementById("result").style.color = "red";
-  }
+        function handleKey(key) {
+            if (gameOver) return;
 
-  updateScore();
-  current++;
+            if (key === 'Enter') {
+                if (currentGuess.length === 5) {
+                    submitGuess();
+                } else {
+                    showMessage("5글자를 채워주세요.");
+                }
+            } else if (key === 'Back') {
+                if (currentGuess.length > 0) {
+                    currentGuess.pop();
+                    updateBoard();
+                }
+            } else if (currentGuess.length < 5) {
+                // Ensure the key is a jamo
+                if (key.length === 1) {
+                    currentGuess.push(key);
+                    updateBoard();
+                }
+            }
+        }
 
-  setTimeout(() => {
-    loadQuestion();
-  }, 1200);
-}
+        function updateBoard() {
+            const rowIdx = guesses.length;
+            for (let i = 0; i < 5; i++) {
+                const tile = document.getElementById(`tile-${rowIdx}-${i}`);
+                tile.innerText = currentGuess[i] || "";
+            }
+        }
 
-// 실행
-fetchWords();
+        function submitGuess() {
+            const rowIdx = guesses.length;
+            const guess = [...currentGuess];
+            const result = new Array(5).fill('absent');
+            
+            const targetCopy = [...targetJamos];
+            const guessCopy = [...guess];
 
-</script>
+            // First pass: Find correct (Green)
+            for (let i = 0; i < 5; i++) {
+                if (guess[i] === targetJamos[i]) {
+                    result[i] = 'correct';
+                    targetCopy[i] = null;
+                    guessCopy[i] = null;
+                }
+            }
 
+            // Second pass: Find present (Orange)
+            for (let i = 0; i < 5; i++) {
+                if (guessCopy[i] === null) continue;
+                const idx = targetCopy.indexOf(guessCopy[i]);
+                if (idx !== -1) {
+                    result[i] = 'present';
+                    targetCopy[idx] = null;
+                }
+            }
+
+            // Animate and update UI
+            for (let i = 0; i < 5; i++) {
+                const tile = document.getElementById(`tile-${rowIdx}-${i}`);
+                tile.dataset.state = result[i];
+            }
+
+            guesses.push(guess);
+            currentGuess = [];
+
+            if (result.every(r => r === 'correct')) {
+                showMessage("축하합니다! 정답입니다!");
+                gameOver = true;
+            } else if (guesses.length === 5) {
+                showMessage("실패했습니다. 정답은: " + targetWord);
+                gameOver = true;
+            }
+        }
+
+        function showMessage(msg) {
+            messageElement.innerText = msg;
+        }
+
+        init();
+    </script>
 </body>
 </html>
