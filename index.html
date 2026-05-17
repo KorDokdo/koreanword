@@ -73,14 +73,23 @@
         }
 
         #keyboard {
-            display: grid;
-            grid-template-columns: repeat(10, 1fr);
+            display: flex;
+            flex-direction: column;
             gap: 5px;
             max-width: 500px;
             width: 100%;
         }
 
+        .keyboard-row {
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+            width: 100%;
+        }
+
         .key {
+            flex: 1;
+            max-width: 46px;
             background-color: #d3d6da;
             border: 0;
             border-radius: 4px;
@@ -93,7 +102,11 @@
 
         .key:hover { background-color: #bbb; }
 
-        .key.wide { grid-column: span 2; }
+        .key.wide {
+            flex: 1.5;
+            max-width: 70px;
+            font-size: 1rem;
+        }
 
         #message {
             height: 30px;
@@ -239,19 +252,24 @@
         }
 
         function createKeyboard() {
-            const keys = [
-                'ㄱ', 'ㄴ', 'ㄷ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅅ', 'ㅇ', 'ㅈ', 'ㅊ',
-                'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ', 'ㅏ', 'ㅑ', 'ㅓ', 'ㅕ', 'ㅗ', 'ㅛ',
-                'ㅜ', 'ㅠ', 'ㅡ', 'ㅣ', 'Enter', 'Back'
+            const rows = [
+                ['ㅂ', 'ㅈ', 'ㄷ', 'ㄱ', 'ㅅ', 'ㅛ', 'ㅕ', 'ㅑ', 'ㅐ', 'ㅔ'],
+                ['ㅁ', 'ㄴ', 'ㅇ', 'ㄹ', 'ㅎ', 'ㅗ', 'ㅓ', 'ㅏ', 'ㅣ'],
+                ['Enter', 'ㅋ', 'ㅌ', 'ㅊ', 'ㅍ', 'ㅠ', 'ㅜ', 'ㅡ', 'Back']
             ];
 
-            keys.forEach(k => {
-                const button = document.createElement('button');
-                button.innerText = k;
-                button.className = 'key';
-                if (k === 'Enter' || k === 'Back') button.classList.add('wide');
-                button.onclick = () => handleKey(k);
-                keyboardElement.appendChild(button);
+            rows.forEach(keys => {
+                const row = document.createElement('div');
+                row.className = 'keyboard-row';
+                keys.forEach(k => {
+                    const button = document.createElement('button');
+                    button.innerText = k;
+                    button.className = 'key';
+                    if (k === 'Enter' || k === 'Back') button.classList.add('wide');
+                    button.onclick = () => handleKey(k);
+                    row.appendChild(button);
+                });
+                keyboardElement.appendChild(row);
             });
         }
 
