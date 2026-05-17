@@ -7,7 +7,7 @@
 
   <style>
     body{
-      font-family: Arial, sans-serif;
+      font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
       background:#f2f2f2;
       display:flex;
       justify-content:center;
@@ -30,17 +30,27 @@
     }
 
     .hint{
-      font-size:22px;
+      font-size:24px;
       margin:20px 0;
       color:#444;
+      font-weight: bold;
+      background: #eef;
+      padding: 10px;
+      border-radius: 8px;
     }
 
     input{
       width:80%;
-      padding:10px;
+      padding:12px;
       font-size:18px;
-      border:1px solid #ccc;
+      border:2px solid #ddd;
       border-radius:8px;
+      outline: none;
+      transition: border-color 0.3s;
+    }
+
+    input:focus {
+      border-color: #4CAF50;
     }
 
     button{
@@ -52,6 +62,7 @@
       background:#4CAF50;
       color:white;
       cursor:pointer;
+      transition: background 0.3s;
     }
 
     button:hover{
@@ -62,12 +73,15 @@
       margin-top:20px;
       font-size:20px;
       font-weight:bold;
+      height: 24px;
     }
 
     .score{
-      margin-top:10px;
+      margin-top:15px;
       font-size:18px;
       color:#222;
+      border-top: 1px solid #eee;
+      padding-top: 10px;
     }
   </style>
 </head>
@@ -77,9 +91,9 @@
   <div class="game-box">
     <h1>한글 단어 맞추기</h1>
 
-    <div class="hint" id="hint">초성: ㄱㅂ</div>
+    <div class="hint" id="hint">초성: </div>
 
-    <input type="text" id="answer" placeholder="정답 입력">
+    <input type="text" id="answer" placeholder="정답 입력" onkeyup="if(window.event.keyCode==13){checkAnswer()}">
 
     <br>
 
@@ -92,79 +106,89 @@
 
 <script>
 
-const words = [
-  { word:"김밥", hint:"ㄱㅂ" },
-  { word:"사과", hint:"ㅅㄱ" },
-  { word:"바나나", hint:"ㅂㄴㄴ" },
-  { word:"호랑이", hint:"ㅎㄹㅇ" },
-  { word:"컴퓨터", hint:"ㅋㅍㅌ" }
+const wordList = [
+  "사과", "바나나", "포도", "딸기", "수박", "오렌지", "복숭아", "강아지", "고양이", "코끼리",
+  "기린", "호랑이", "사자", "토끼", "다람쥐", "거북이", "컴퓨터", "휴대폰", "자동차", "비행기",
+  "자전거", "학교", "선생님", "학생", "공부", "우정", "사랑", "가족", "부모님", "바다",
+  "하늘", "구름", "태양", "달빛", "별자리", "나무", "꽃잎", "산책", "운동", "여행",
+  "도서관", "음악", "영화", "노래", "춤", "그림", "요리", "음식", "커피", "우유",
+  "겨울", "여름", "봄나물", "가을", "무지개", "시냇물", "단풍나무", "해바라기", "코스모스", "장미꽃"
 ];
 
+let words = [];
 let current = 0;
 let score = 0;
 
-function loadQuestion(){
-  document.getElementById("hint").innerText =
-    "초성: " + words[current].hint;
-
-  document.getElementById("answer").value = "";
-  document.getElementById("result").innerText = "";
+// 한글 초성 추출 함수
+function getChoseong(word) {
+  const choseongList = [
+    "ㄱ", "ㄲ", "ㄴ", "ㄷ", "ㄸ", "ㄹ", "ㅁ", "ㅂ", "ㅃ", "ㅅ", "ㅆ", "ㅇ", "ㅈ", "ㅉ", "ㅊ", "ㅋ", "ㅌ", "ㅍ", "ㅎ"
+  ];
+  let result = "";
+  for (let i = 0; i < word.length; i++) {
+    const code = word.charCodeAt(i) - 44032;
+    if (code >= 0 && code <= 11171) {
+      result += choseongList[Math.floor(code / 588)];
+    } else {
+      result += word.charAt(i);
+    }
+  }
+  return result;
 }
 
-function checkAnswer(){
+// 게임 초기화 및 단어 셔플
+function initGame() {
+  words = wordList
+    .map(word => ({ word, hint: getChoseong(word) }))
+    .sort(() => Math.random() - 0.5);
+  current = 0;
+  score = 0;
+  updateScore();
+  loadQuestion();
+}
 
-  const input =
-    document.getElementById("answer").value.trim();
+function loadQuestion() {
+  if (current < words.length) {
+    document.getElementById("hint").innerText = "초성: " + words[current].hint;
+    document.getElementById("answer").value = "";
+    document.getElementById("answer").focus();
+    document.getElementById("result").innerText = "";
+  } else {
+    alert("모든 문제를 풀었습니다! 최종 점수: " + score);
+    initGame();
+  }
+}
+
+function updateScore() {
+  document.getElementById("score").innerText = "점수 : " + score;
+}
+
+function checkAnswer() {
+  const input = document.getElementById("answer").value.trim();
+  if (!input) return;
 
   const correct = words[current].word;
 
-  if(input === correct){
-
+  if (input === correct) {
     score += 10;
-
-    document.getElementById("result").innerText =
-      "정답입니다!";
-
+    document.getElementById("result").innerText = "정답입니다! 🎉";
     document.getElementById("result").style.color = "green";
-
-  }else{
-
-    document.getElementById("result").innerText =
-      "틀렸습니다! 정답 : " + correct;
-
+  } else {
+    document.getElementById("result").innerText = "틀렸습니다! 정답: " + correct;
     document.getElementById("result").style.color = "red";
   }
 
-  document.getElementById("score").innerText =
-    "점수 : " + score;
-
+  updateScore();
   current++;
 
-  if(current >= words.length){
-
-    setTimeout(() => {
-
-      alert("게임 종료! 최종 점수 : " + score);
-
-      current = 0;
-      score = 0;
-
-      document.getElementById("score").innerText =
-        "점수 : 0";
-
-      loadQuestion();
-
-    }, 1000);
-
-  }else{
-
-    setTimeout(() => {
-      loadQuestion();
-    }, 1000);
-  }
+  // 다음 문제로 넘어가기 (약간의 지연)
+  setTimeout(() => {
+    loadQuestion();
+  }, 1200);
 }
 
-loadQuestion();
+// 게임 시작
+initGame();
 
 </script>
 
